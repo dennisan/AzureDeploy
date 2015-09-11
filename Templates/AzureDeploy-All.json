@@ -1,0 +1,79 @@
+{
+  "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json",
+  "contentVersion": "1.0.0.0",
+
+  "parameters": {
+    "customerPrefix": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of customer being deployed"
+      }
+    },
+    "environPrefix": {
+      "type": "string",
+      "allowedValues": [
+        "Prod",
+        "test"
+      ],
+      "metadata": {
+        "description": "Environment prefix"
+      }
+    }
+  },
+
+  "variables": {
+    "templateBaseUrl": "https://raw.githubusercontent.com/dennisan/PSSpike/master/ARMTemplates/",
+    "sharedTemplateUrl": "[concat(variables('templateBaseUrl'), 'AzureDeploy-SharedResources.json')]",
+    "vmTemplateUrl": "[concat(variables('templateBaseUrl'), 'AzureDeploy-VirtualMachines.json')]",
+    "appServerCount": 1,
+    "dbServerCount": 1
+  },
+
+  "resources": [
+    {
+      "type": "Microsoft.Resources/deployments",
+      "name": "SharedResources",
+      "apiVersion": "2015-01-01",
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('sharedTemplateUrl')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "customerPrefix": {
+            "value": "[parameters('customerPrefix')]"
+          },
+          "environPrefix": {
+            "value": "[parameters('environPrefix')]"
+          }
+        }
+      }
+    },
+
+    {
+      "type": "Microsoft.Resources/deployments",
+      "name": "AppServers",
+      "apiVersion": "2015-01-01",
+      "dependsOn": [ "[concat('Microsoft.Resources/deployments/', 'SharedResources')]" ],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('vmTemplateUrl')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "customerPrefix": {
+            "value": "[parameters('customerPrefix')]"
+          },
+          "environPrefix": {
+            "value": "[parameters('environPrefix')]"
+          },
+          "numberOfInstances": {
+            "value": "[variables('appServerCount')]"
+          }
+        }
+      }
+    }
+  ]
+}

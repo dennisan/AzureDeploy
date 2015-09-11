@@ -1,0 +1,75 @@
+{
+  "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json",
+  "contentVersion": "1.0.0.0",
+
+  "parameters": {
+    "customerPrefix": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of customer being deployed"
+      }
+    },
+    "environPrefix": {
+      "type": "string",
+      "allowedValues": [
+        "Prod",
+        "test"
+      ],
+      "metadata": {
+        "description": "Environment prefix"
+      }
+    }
+  },
+
+  "variables": {
+    "stndStorageAccountName": "[toLower(concat( parameters('customerPrefix'), parameters('environPrefix'), 'stnd' ))]",
+
+    "vnetName": "[concat( parameters('customerPrefix'), '-vnet' )]",
+    "vnetId": "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]",
+    "vnetAddress": "10.40.16.0/21",
+    
+    "appSubnetName": "[concat( parameters('environPrefix') , 'App' )]",
+    "appSubnetAddress": "10.40.16.0/24",
+    "mgmtSubnetName": "Mgmt",
+    "mgmtSubnetAddress": "10.40.21.0/24"
+  },
+
+  "resources": [
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "name": "[variables('stndStorageAccountName')]",
+      "apiVersion": "2015-05-01-preview",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "accountType": "Standard_LRS"
+      }
+    },
+    {
+      "type": "Microsoft.Network/virtualNetworks",
+      "name": "[variables('vnetName')]",
+      "apiVersion": "2015-05-01-preview",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "[variables('vnetAddress')]"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "[variables('appSubnetName')]",
+            "properties": {
+              "addressPrefix": "[variables('appSubnetAddress')]"
+            }
+          },
+          {
+            "name": "[variables('mgmtSubnetName')]",
+            "properties": {
+              "addressPrefix": "[variables('mgmtSubnetAddress')]"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

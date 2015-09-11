@@ -1,0 +1,146 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json",
+    "contentVersion": "1.0.0.0",
+
+    "parameters": {
+        "customerPrefix": {
+            "type": "string",
+            "metadata": {
+                "description": "Name of customer being deployed"
+            }
+        },
+        "environPrefix": {
+            "type": "string",
+            "allowedValues": [
+                "Prod",
+                "test"
+            ],
+            "metadata": {
+                "description": "Environment prefix"
+            }
+        },
+        "numberOfInstances": {
+            "type": "int",
+            "defaultValue": 1,
+            "metadata": {
+                "description": "Number of VMs to create"
+            }
+        }
+    },
+
+    "variables": {
+        "stndStorageAccountName": "[toLower(concat( parameters('customerPrefix') , parameters('environPrefix') , 'stnd' ))]",
+
+        "vnetName": "[concat( parameters('customerPrefix'), '-vnet' )]",
+        "subnetName": "[concat( parameters('environPrefix') , 'App' )]",
+        "subnetRef": "[concat(resourceId('Microsoft.Network/virtualNetworks', variables('vnetName')    ), '/subnets/', variables('subnetName')  )]",
+
+        "availSetName": "[concat( parameters('customerPrefix') , '-App-as' )]",
+        "faultDomainCount": "3",
+
+        "vmName": "[concat( parameters('customerPrefix') , '-App' )]",
+        "vmSize": "Standard_A3",
+        "adminUsername": "Dennis",
+        "adminPassword": "P@ssword1"
+    },
+
+    "resources": [
+
+        {
+            "type": "Microsoft.Compute/availabilitySets",
+            "name": "[variables('availSetName')]",
+            "apiVersion": "2015-06-15",
+            "location": "[resourceGroup().location]",
+            "properties": {
+                "PlatformFaultDomainCount": "[variables('faultDomainCount')]"
+            }
+        },
+
+        {
+            "type": "Microsoft.Network/networkInterfaces",
+            "name": "[concat(variables('vmName'), copyIndex(1), '-nic' )]",
+            "apiVersion": "2015-06-15",
+            "location": "[resourceGroup().location]",
+            "copy": {
+                "name": "nicLoop",
+                "count": "[parameters('numberOfInstances')]"
+            },
+            "properties": {
+                "ipConfigurations": [
+                    {
+                        "name": "ipconfig",
+                        "properties": {
+                            "privateIPAllocationMethod": "Dynamic",
+                            "subnet": {
+                                "id": "[variables('subnetRef')]"
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+
+        {
+            "type": "Microsoft.Compute/virtualMachines",
+            "name": "[concat(variables('vmName'), copyIndex(1))]",
+            "apiVersion": "2015-06-15",
+            "location": "[resourceGroup().location]",
+            "copy": {
+                "name": "vmLoop",
+                "count": "[parameters('numberOfInstances')]"
+            },
+            "dependsOn": [
+                "[concat('Microsoft.Compute/availabilitySets/', variables('availSetName'))]",
+                "[concat('Microsoft.Network/networkInterfaces/', variables('vmName'), copyIndex(1), '-nic')]"
+            ],
+            "properties": {
+                "availabilitySet": {
+                    "id": "[resourceId('Microsoft.Compute/availabilitySets', variables('availSetName'))]"
+                },
+                "hardwareProfile": {
+                    "vmSize": "[variables('vmSize')]"
+                },
+                "osProfile": {
+                    "computerName": "[concat(variables('vmName'), copyIndex(1))]",
+                    "adminUsername": "[variables('adminUsername')]",
+                    "adminPassword": "[variables('adminPassword')]"
+                },
+                "networkProfile": {
+                    "networkInterfaces": [
+                        {
+                            "id": "[resourceId('Microsoft.Network/networkInterfaces', concat(variables('vmName'), copyIndex(1), '-nic'))]"
+                        }
+                    ]
+                },
+                "storageProfile": {
+                    "imageReference": {
+                        "publisher": "MicrosoftWindowsServer",
+                        "offer": "WindowsServer",
+                        "sku": "2012-R2-Datacenter",
+                        "version": "latest"
+                    },
+                    "osDisk": {
+                        "name": "osdisk",
+                        "vhd": {
+                            "uri": "[concat('http://',variables('stndStorageAccountName'),'.blob.core.windows.net/vhds/', variables('vmName'), '-osdisk.vhd')]"
+                        },
+                        "caching": "ReadWrite",
+                        "createOption": "FromImage"
+                    },
+                    "dataDisks": [
+                        {
+                            "lun": 0,
+                            "name": "[concat(variables('vmName'), copyIndex(1),'-disk-','0')]",
+                            "createOption": "Empty",
+                            "diskSizeGB": "1023",
+                            "vhd": {
+                                "uri": "[concat('http://',variables('stndStorageAccountName'),'.blob.core.windows.net/vhds/', variables('vmName'), copyIndex(1),'-disk-','0','.vhd')]"
+                            },
+                            "caching": "None"
+                        }
+                    ]
+                }
+            }
+        }
+    ]
+}
