@@ -45,9 +45,8 @@
         "vmSize": "Standard_A3",
         "adminUsername": "Dennis",
         "adminPassword": "P@ssword1",
-
-        "templateBaseUrl": "https://raw.githubusercontent.com/dennisan/PSSpike/master/ARMTemplates/",
-        https://raw.githubusercontent.com/dennisan/AzureDeploy/d997b86bc8e054f50506d80714acda7fce5f9b43/Scripts/PostDeployScript.ps1
+        "deployScriptPath": "https://raw.githubusercontent.com/dennisan/AzureDeploy/master/scripts/",  
+        "deployScriptName": "PostDeployScript.ps1"  
     },
 
     "resources": [
@@ -227,8 +226,8 @@
                         "type": "CustomScriptExtension",
                         "typeHandlerVersion": "1.2",
                         "settings": {
-                            "fileUris": [ "[parameters('scriptFile')]" ],
-                            "commandToExecute": "[concat('powershell -ExecutionPolicy Unrestricted -file PostDeployScript.ps1'))]"
+                            "fileUris": [ "[variables('deployScriptPath')]" ],
+                            "commandToExecute": "[concat('powershell -ExecutionPolicy Unrestricted -file ', variables('deployScriptName')) ]"
                         }
                     }
                 }
